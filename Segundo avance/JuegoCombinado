@@ -1,0 +1,111 @@
+import pygame
+import sys
+import speech_recognition as sr
+import threading
+
+# Declarar carro_rect como una variable global
+carro_rect = None
+# Variable global para indicar si el juego debe continuar o detenerse
+juego_en_ejecucion = True
+
+# Función para inicializar Pygame y configurar la ventana
+def inicializar_pygame():
+    global carro_rect, juego_en_ejecucion  # Indicar que estamos usando las variables globales
+    pygame.init()
+
+    # Configurar la ventana del juego
+    ventana = pygame.display.set_mode((800, 600))
+
+    # Configurar el reloj del juego
+    reloj = pygame.time.Clock()
+
+    # Configurar el carro (1/3 más pequeño)
+    carro = pygame.image.load('carro.png')  # Asegúrate de tener una imagen llamada 'carro.png' en tu directorio
+    carro = pygame.transform.scale(carro, (carro.get_width() // 3, carro.get_height() // 3))
+    carro_rect = carro.get_rect()
+    carro_rect.y = 300  # Alinea el carro con la franja
+
+    # Configurar las franjas
+    franjas = [pygame.Rect(i * 100, 300, 50, 10) for i in range(8)]
+    velocidad_franjas = 5
+
+    # Bucle principal del juego
+    while juego_en_ejecucion:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        # Movimiento de las franjas
+        for franja in franjas:
+            franja.x -= velocidad_franjas
+            if franja.right < 0:
+                franja.left = 800
+
+        # Dibujar el fondo y las franjas
+        ventana.fill((0, 0, 0))
+        for franja in franjas:
+            pygame.draw.rect(ventana, (255, 255, 255), franja)
+
+        # Dibujar el carro
+        ventana.blit(carro, carro_rect)
+
+        # Actualizar la pantalla y establecer el reloj a 60 FPS
+        pygame.display.flip()
+        reloj.tick(60)
+
+# Función para manejar los comandos de voz
+def manejar_comandos_voz():
+    global juego_en_ejecucion  # Indicar que estamos usando la variable global
+    # Configurar el reconocimiento de voz
+    r = sr.Recognizer()
+    comandos = ["arriba", "izquierda", "derecha", "detener", "abajo", "salir"]
+    velocidad_carro = 150
+
+    with sr.Microphone() as source:
+        r.adjust_for_ambient_noise(source)
+        print("Esperando a que inicies los comandos de voz...")
+
+    while juego_en_ejecucion:
+        with sr.Microphone() as source:
+            try:
+                audio = r.listen(source, timeout=3)  # Espera un máximo de 3 segundos para el comando de voz
+                texto = r.recognize_google(audio, language='es-ES')
+                
+                if texto.lower() in comandos:
+                    print(f"Comando reconocido: {texto}")
+                    if texto.lower() == "arriba":
+                        carro_rect.y -= velocidad_carro
+                    elif texto.lower() == "izquierda":
+                        carro_rect.x -= velocidad_carro
+                    elif texto.lower() == "derecha":
+                        carro_rect.x += velocidad_carro
+                    elif texto.lower() == "detener":
+                        pass
+                    elif texto.lower() == "abajo":
+                        carro_rect.y += velocidad_carro
+                    elif texto.lower() == "salir":
+                        print("Saliendo del juego...")
+                        juego_en_ejecucion = False
+                else:
+                    print(f"Comando no reconocido: {texto}")
+                    
+            except sr.WaitTimeoutError:
+                print("Tiempo de espera agotado. Intenta de nuevo.")
+            except sr.UnknownValueError:
+                print("No se pudo entender el audio. Intenta de nuevo.")
+            except sr.RequestError as e:
+                print(f"Error al solicitar resultados; {e}. Intenta de nuevo.")
+
+if __name__ == '__main__':
+    # Iniciar el hilo para la interfaz de Pygame
+    pygame_thread = threading.Thread(target=inicializar_pygame)
+    pygame_thread.start()
+
+    # Iniciar el hilo para el reconocimiento de voz
+    voz_thread = threading.Thread(target=manejar_comandos_voz)
+    voz_thread.start()
+
+    # Esperar a que ambos hilos terminen antes de salir del programa
+    pygame_thread.join()
+    voz_thread.join()
