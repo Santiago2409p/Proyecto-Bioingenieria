@@ -1,0 +1,88 @@
+import pygame
+import sys
+import random
+
+# Inicializar Pygame
+pygame.init()
+
+# Configurar la ventana del juego
+ventana = pygame.display.set_mode((800, 600))
+
+# Configurar el reloj del juego
+reloj = pygame.time.Clock()
+
+# Configurar el carro (1/3 más pequeño)
+carro = pygame.image.load('carro.png')
+carro = pygame.transform.scale(carro, (carro.get_width() // 3, carro.get_height() // 3))
+carro_rect = carro.get_rect()
+
+# Configurar las franjas
+franjas = [pygame.Rect(i * 100, 300, 50, 10) for i in range(8)]
+velocidad_franjas = 5
+
+# Lista para almacenar objetos cuadrados
+objetos_cuadrados = []
+
+# Temporizador para controlar la aparición de objetos
+tiempo_objeto = 0
+
+# Bucle principal del juego
+while True:
+    # Eventos del juego
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+    # Movimiento del carro con las teclas
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        carro_rect.x -= 5
+    if keys[pygame.K_RIGHT]:
+        carro_rect.x += 5
+    if keys[pygame.K_UP]:
+        carro_rect.y -= 5
+    if keys[pygame.K_DOWN]:
+        carro_rect.y += 5
+
+    # Movimiento de las franjas
+    for franja in franjas:
+        franja.x -= velocidad_franjas
+        if franja.right < 0:
+            franja.left = 800
+
+    # Actualizar el temporizador
+    tiempo_objeto += 1
+
+    # Crear objetos cuadrados aleatorios a intervalos moderados
+    if tiempo_objeto >= 60:  # Controla la velocidad de aparición (60 frames por segundo)
+        # Tamaño aleatorio (20% más pequeño del máximo)
+        tamaño = random.randint(20, ventana.get_height() // 5)
+        tamaño = int(tamaño * 0.8)
+        y = random.randint(0, ventana.get_height() - tamaño)  # Posición aleatoria (vertical)
+        objeto_rect = pygame.Rect(ventana.get_width(), y, tamaño, tamaño)
+        objetos_cuadrados.append(objeto_rect)
+        tiempo_objeto = 0  # Reiniciar el temporizador
+
+    # Mover los objetos cuadrados
+    for objeto_rect in objetos_cuadrados:
+        objeto_rect.x -= 5  # Velocidad de movimiento de los objetos
+
+    # Eliminar objetos cuadrados que salen de la pantalla
+    objetos_cuadrados = [objeto_rect for objeto_rect in objetos_cuadrados if objeto_rect.right > 0]
+
+    # Dibujar el fondo y las franjas
+    ventana.fill((0, 0, 0))
+    for franja in franjas:
+        pygame.draw.rect(ventana, (255, 255, 255), franja)
+    
+    # Dibujar el carro
+    ventana.blit(carro, carro_rect)
+
+    # Dibujar los objetos cuadrados
+    for objeto_rect in objetos_cuadrados:
+        pygame.draw.rect(ventana, (255, 0, 0), objeto_rect)  # Dibujar objetos cuadrados en rojo
+
+    # Actualizar la pantalla y establecer el reloj a 60 FPS
+    pygame.display.flip()
+    reloj.tick(60)
